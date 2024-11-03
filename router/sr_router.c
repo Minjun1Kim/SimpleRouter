@@ -80,5 +80,62 @@ void sr_handlepacket(struct sr_instance* sr,
 
   /* fill in code here */
 
+  // check if the packet is large enogugh to contain an ethernet header
+  if (len < sizeof(sr_ethernet_hdr_t)) {
+    fprintf(stderr, "Packet is too short\n");
+    return;
+  }
+
+  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) packet;
+  
+  uint16_t ethertype = ntohs(eth_hdr->ether_type);
+
+  if (ethertype == ethertype_ip) {
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
+    uint8_t ip_hdr_len = ip_hdr->ip_hl * 4;
+
+    if (len < sizeof(sr_ethernet_hdr_t) + ip_hdr_len) {
+      fprintf(stderr, "Packet is too short\n");
+      return;
+    }
+
+    if (ip_hdr->ip_p == ip_protocol_icmp) {
+      sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + ip_hdr_len);
+      uint8_t icmp_hdr_len = sizeof(sr_icmp_hdr_t);
+
+      if (len < sizeof(sr_ethernet_hdr_t) + ip_hdr_len + icmp_hdr_len) {
+        fprintf(stderr, "Packet is too short\n");
+        return;
+      }
+
+      if (icmp_hdr->icmp_type == icmp_type_echo_request) {
+        sr_handle_icmp_echo_request(sr, packet, len, interface);
+      }
+    }
+  } else if (ethertype == ethertype_arp) {
+    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
+
+    if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t)) {
+      fprintf(stderr, "Packet is too short\n");
+      return;
+    }
+
+    if (ntohs(arp_hdr->ar_op) == arp_op_request) {
+      sr_handle_arp_request(sr, packet, len, interface);
+    } else if (ntohs(arp_hdr->ar_op) == arp_op_reply) {
+      sr_handle_arp_reply(sr, packet, len, interface);
+    } else {
+      fprintf(stderr, "Unknown ARP operation\n");
+      return;
+    }
+    
+  } else {
+    fprintf(stderr, "Unknown ethertype\n");
+    return;
+  }
+
+
+
+
 }/* end sr_ForwardPacket */
 
