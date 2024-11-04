@@ -9,6 +9,7 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 #include "sr_ip_packet.h"
+#include "sr_vns_comm.h"
 
 void sr_handleIPpacket(struct sr_instance* sr,
         uint8_t * packet,
@@ -198,6 +199,9 @@ void forward_ip_packet(struct sr_instance *sr,
         memcpy(eth_hdr->ether_shost, out_iface->addr, ETHER_ADDR_LEN);
         memcpy(eth_hdr->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
 
+        // send an ARP request for the next-hop IP (if one hasn’t been sent within the last second
+        //TODO
+
         /* Send packet */
         sr_send_packet(sr, packet, len, out_iface->name);
 
@@ -251,7 +255,6 @@ void send_icmp_error(struct sr_instance *sr,
     sr_icmp_t3_hdr_t *icmp_hdr_new = (sr_icmp_t3_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 
     /* Set up Ethernet header */
-    /* Will fill in addresses later */
 
     /* Set up IP header */
     ip_hdr_new->ip_v = 4;
@@ -307,7 +310,7 @@ void send_icmp_error(struct sr_instance *sr,
     } else {
         /* Queue the packet and send ARP request */
         struct sr_arpreq *req = sr_arpcache_queuereq(&sr->cache, ip_hdr_new->ip_dst, packet, len, iface->name);
-        sr_arpcache_handle_arpreq(sr, req);
+        sr_arpcache_handle_arpreq(sr, req); //TODO
     }
     free(packet);
 }

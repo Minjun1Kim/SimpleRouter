@@ -21,7 +21,7 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
-#inlcude "sr_ip_packet.h"
+#include "sr_ip_packet.h"
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -81,13 +81,13 @@ void sr_handlepacket(struct sr_instance* sr,
 
   /* fill in code here */
 
-  // check if the packet is large enogugh to contain an ethernet header
+  /* check if the packet is large enogugh to contain an ethernet header */
   if (len < sizeof(sr_ethernet_hdr_t)) {
     fprintf(stderr, "Packet is too short\n");
     return;
   }
 
-  // extract the ethernet header from the packet
+  /* extract the ethernet header from the packet */
   sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) packet;
   
   uint16_t ethertype = ntohs(eth_hdr->ether_type);
