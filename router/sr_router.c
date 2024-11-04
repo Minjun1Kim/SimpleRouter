@@ -21,6 +21,7 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
+#inlcude "sr_ip_packet.h"
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -86,6 +87,7 @@ void sr_handlepacket(struct sr_instance* sr,
     return;
   }
 
+  // extract the ethernet header from the packet
   sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) packet;
   
   uint16_t ethertype = ntohs(eth_hdr->ether_type);
@@ -110,24 +112,13 @@ void sr_handlepacket(struct sr_instance* sr,
 
       if (icmp_hdr->icmp_type == icmp_type_echo_request) {
         sr_handle_icmp_echo_request(sr, packet, len, interface);
-      }
+      } 
+
+    } else if (ip_hdr->ip_p == ip_protocol_tcp || ip_hdr->ip_p == ip_protocol_udp) {
+      sr_handle_tcp_udp_packet(sr, packet, len, interface);
     }
+
   } else if (ethertype == ethertype_arp) {
-    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-
-    if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t)) {
-      fprintf(stderr, "Packet is too short\n");
-      return;
-    }
-
-    if (ntohs(arp_hdr->ar_op) == arp_op_request) {
-      sr_handle_arp_request(sr, packet, len, interface);
-    } else if (ntohs(arp_hdr->ar_op) == arp_op_reply) {
-      sr_handle_arp_reply(sr, packet, len, interface);
-    } else {
-      fprintf(stderr, "Unknown ARP operation\n");
-      return;
-    }
     
   } else {
     fprintf(stderr, "Unknown ethertype\n");
