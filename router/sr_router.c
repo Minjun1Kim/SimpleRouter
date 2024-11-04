@@ -110,7 +110,7 @@ void sr_handlepacket(struct sr_instance* sr,
         return;
       }
 
-      if (icmp_hdr->icmp_type == icmp_type_echo_request) {
+      if (icmp_hdr->icmp_type == icmp_protocol_type_echo_req) {
         sr_handle_icmp_echo_request(sr, packet, len, interface);
       } 
 
