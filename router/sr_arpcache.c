@@ -10,6 +10,7 @@
 #include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
+#include "sr_ip_packet.h"
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -19,16 +20,20 @@
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     pthread_mutex_lock(&(sr->cache.lock));
 
-    // Loop through each ARP request in the linked list
+    /* Loop through each ARP request in the linked list */
     struct sr_arpreq *req = sr->cache.requests;
     struct sr_arpreq *next_req;
     while (req) {
         next_req = req->next;
         if(req->times_sent == 5) {
-            for (struct sr_packet *waiting_pkts = req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
-                
+            struct sr_packet *waiting_pkts;
+            for (waiting_pkts = req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
+                struct sr_if *pkt_if = sr_get_interface(sr, waiting_pkts->iface);
+                if (pkt_if != 0) {
+                    send_icmp_error(sr, waiting_pkts->buf, waiting_pkts->len, 3, 1, pkt_if->name);
+                }
             }
-            sr_arpreq_destroy(sr->cache, req)
+            sr_arpreq_destroy(&(sr->cache), req);
         }
         else if(difftime(time(NULL), req->sent) >= 1.0) {
             send_arp_request(sr, req);
@@ -54,10 +59,10 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
     arp_request_hdr->ar_pro = htons(ethertype_ip);
     arp_request_hdr->ar_hln = ETHER_ADDR_LEN;
     arp_request_hdr->ar_pln = 4;
-    arp_request_hdr->ar_op htons(arp_op_request);
-    memcpy(arp_request_hdr->sha, sr_if->addr, ETHER_ADDR_LEN);
+    arp_request_hdr->ar_op = htons(arp_op_request);
+    memcpy(arp_request_hdr->ar_sha, sr_if->addr, ETHER_ADDR_LEN);
     arp_request_hdr->ar_sip = sr_if->ip;
-    memcpy(arp_request_hdr->tha, 0x00, ETHER_ADDR_LEN);
+    memset(arp_request_hdr->ar_tha, 0, ETHER_ADDR_LEN);
     arp_request_hdr->ar_tip = req->ip;
 
     sr_send_packet(sr, arp_request_packet, sizeof(sr_ethernet_hdr_t)+sizeof(sr_arp_hdr_t), req->packets->iface);

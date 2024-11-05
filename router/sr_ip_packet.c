@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 
@@ -16,16 +18,16 @@ void sr_handleIPpacket(struct sr_instance* sr,
         unsigned int len,
         char* interface) {
 
-  // check if the packet is large enough for IP header
+  /* check if the packet is large enough for IP header */
   if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)) {
     fprintf(stderr, "Packet is too short\n");
     return;
   }
 
-  // extract the IP header from the packet
+  /* extract the IP header from the packet */
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
 
-  //validate IP header
+  /* validate IP header */
   if (ip_hdr->ip_v != 4) {
     fprintf(stderr, "Invalid IP version\n");
     return;
@@ -36,7 +38,7 @@ void sr_handleIPpacket(struct sr_instance* sr,
     return;
   }
 
-  // validate IP checksum
+  /* validate IP checksum */
   uint16_t checksum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
 
@@ -61,25 +63,25 @@ void sr_handleIPpacket(struct sr_instance* sr,
   }
 
   if (is_for_router) {
-    // packet is destined for the router
+    /* packet is destined for the router */
     if (ip_hdr->ip_p == ip_protocol_icmp) {
-      // handle ICMP packet
+      /* handle ICMP packet */
       handle_icmp_packet(sr, packet, len, interface);
     } else if (ip_hdr->ip_p == ip_protocol_tcp || ip_hdr->ip_p == ip_protocol_udp) {
-      send_icmp_error(sr, packet, len, 3, 3, interface); // Port unreachable
+      send_icmp_error(sr, packet, len, 3, 3, interface); /* Port unreachable */
     } else {
       fprintf(stderr, "Unknown IP protocol\n");
       return;
     }
   } else {
-    // packet is not destined for the router
+    /* packet is not destined for the router */
     forward_ip_packet(sr, packet, len, interface);
 
   }
 }
 
 
-// if ICMP echo request, send ICMP echo reply
+/* if ICMP echo request, send ICMP echo reply */
 void handle_icmp_packet(struct sr_instance *sr,
                         uint8_t *packet,
                         unsigned int len,
@@ -155,7 +157,7 @@ void send_icmp_echo_reply(struct sr_instance *sr,
     /* Construct ICMP header and payload */
     sr_icmp_hdr_t *icmp_hdr_new = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + ip_header_len);
     memcpy(icmp_hdr_new, orig_packet + sizeof(sr_ethernet_hdr_t) + ip_header_len, icmp_len);
-    icmp_hdr_new->icmp_type = 0; // Echo Reply
+    icmp_hdr_new->icmp_type = 0; /* Echo Reply */
     icmp_hdr_new->icmp_code = 0;
     icmp_hdr_new->icmp_sum = 0;
     icmp_hdr_new->icmp_sum = cksum(icmp_hdr_new, icmp_len);
