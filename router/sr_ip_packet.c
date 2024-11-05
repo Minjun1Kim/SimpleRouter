@@ -66,7 +66,7 @@ void sr_handleIPpacket(struct sr_instance* sr,
       // handle ICMP packet
       handle_icmp_packet(sr, packet, len, interface);
     } else if (ip_hdr->ip_p == ip_protocol_tcp || ip_hdr->ip_p == ip_protocol_udp) {
-      send_icmp_error(sr, packet, len, 3, 3); // Port unreachable
+      send_icmp_error(sr, packet, len, 3, 3, interface); // Port unreachable
     } else {
       fprintf(stderr, "Unknown IP protocol\n");
       return;
@@ -169,7 +169,7 @@ void forward_ip_packet(struct sr_instance *sr,
     /* Check TTL */
     if (ip_hdr->ip_ttl <= 1) {
         /* Send ICMP Time Exceeded */
-        send_icmp_error(sr, packet, len, 11, 0); /* Type 11, Code 0 */
+        send_icmp_error(sr, packet, len, 11, 0, interface); /* Type 11, Code 0 */
         return;
     }
 
@@ -183,7 +183,7 @@ void forward_ip_packet(struct sr_instance *sr,
 
     if (!rt_entry) {
         /* Send ICMP Destination Net Unreachable */
-        send_icmp_error(sr, packet, len, 3, 0); /* Type 3, Code 0 */
+        send_icmp_error(sr, packet, len, 3, 0, interface); /* Type 3, Code 0 */
         return;
     }
 
@@ -238,7 +238,8 @@ void send_icmp_error(struct sr_instance *sr,
                      uint8_t *orig_packet,
                      unsigned int orig_len,
                      uint8_t type,
-                     uint8_t code)
+                     uint8_t code,
+                     char *interface)
 {
     /* Extract original IP header */
     sr_ip_hdr_t *ip_hdr_orig = (sr_ip_hdr_t *)(orig_packet + sizeof(sr_ethernet_hdr_t));
@@ -254,6 +255,18 @@ void send_icmp_error(struct sr_instance *sr,
     /* ICMP header */
     sr_icmp_t3_hdr_t *icmp_hdr_new = (sr_icmp_t3_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 
+    /* Set source IP to the IP of the interface where the packet came in */
+    struct sr_if *iface = sr_get_interface(sr, interface);
+    if (!iface) {
+        fprintf(stderr, "Interface not found when sending ICMP error\n");
+        free(packet);
+        return;
+    }
+    /* Set up Ethernet header */
+    memcpy(eth_hdr_new->ether_shost, iface->addr, ETHER_ADDR_LEN);
+    /* Destination MAC address will be set after ARP resolution */
+    eth_hdr_new->ether_type = htons(ethertype_ip);
+
     /* Set up Ethernet header */
 
     /* Set up IP header */
@@ -265,7 +278,7 @@ void send_icmp_error(struct sr_instance *sr,
     ip_hdr_new->ip_off = htons(IP_DF);
     ip_hdr_new->ip_ttl = 64;
     ip_hdr_new->ip_p = ip_protocol_icmp;
-    ip_hdr_new->ip_src = 0; /* Will set source IP later */
+    ip_hdr_new->ip_src = iface->ip;
     ip_hdr_new->ip_dst = ip_hdr_orig->ip_src;
 
     /* Set up ICMP header */
@@ -278,15 +291,6 @@ void send_icmp_error(struct sr_instance *sr,
     /* Compute ICMP checksum */
     icmp_hdr_new->icmp_sum = 0;
     icmp_hdr_new->icmp_sum = cksum(icmp_hdr_new, sizeof(sr_icmp_t3_hdr_t));
-
-    /* Set source IP to the IP of the interface where the packet came in */
-    struct sr_if *iface = sr_get_interface(sr, interface);
-    if (!iface) {
-        fprintf(stderr, "Interface not found when sending ICMP error\n");
-        free(packet);
-        return;
-    }
-    ip_hdr_new->ip_src = iface->ip;
 
     /* Compute IP checksum */
     ip_hdr_new->ip_sum = 0;
