@@ -120,10 +120,44 @@ void sr_handlepacket(struct sr_instance* sr,
       return;
     }
 
+    // Check if it's targetting one of the router's ip addresses.
+    struct sr_if *sr_if = sr_get_interface(sr, interface);
+    if (sr_if->ip != arp_hdr->ar_tip) {
+      return;
+    }
+
     if (ntohs(arp_hdr->ar_op) == arp_op_request) {
-      sr_handle_arp_request(sr, packet, len, interface);
+      uint8_t* arp_reply_packet = (uint8_t*)malloc(len);
+      memcpy(arp_reply_packet, packet, len);
+
+      sr_ethernet_hdr_t *arp_reply_eth_hdr = (sr_ethernet_hdr_t *) arp_reply_packet;
+      memcpy(arp_reply_eth_hdr->ether_dhost, arp_reply_eth_hdr->ether_shost, ETHER_ADDR_LEN);
+      memcpy(arp_reply_eth_hdr->ether_shost, sr_if->addr, ETHER_ADDR_LEN);
+      
+      sr_arp_hdr_t *arp_reply_hdr = (sr_arp_hdr_t *) (arp_reply_packet + sizeof(sr_ethernet_hdr_t));
+      arp_reply_hdr->ar_op = htons(arp_op_reply);
+      arp_reply_hdr->ar_tip = arp_reply_hdr->ar_sip;
+      arp_reply_hdr->ar_sip = sr_if->ip;
+      memcpy(arp_reply_hdr->ar_tha, arp_reply_hdr->ar_sha, ETHER_ADDR_LEN);
+      memcpy(arp_reply_hdr->ar_sha, sr_if->addr, ETHER_ADDR_LEN);
+
+      sr_send_packet(sr, arp_reply_packet, len, interface);
+      free(arp_reply_packet);
     } else if (ntohs(arp_hdr->ar_op) == arp_op_reply) {
-      sr_handle_arp_reply(sr, packet, len, interface);
+      struct sr_arpreq *cached_req = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
+
+      if (cached_req) {
+        struct sr_packet *waiting_pkts = cached_req->packets;
+        for (struct sr_packet *waiting_pkts = cached_req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
+          uint8_t *waiting_pkt = waiting_pkts->buf;
+          sr_ethernet_hdr_t *pkt_eth_hdr = (sr_ethernet_hdr_t *) waiting_pkt;
+          memcpy(pkt_eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+          memcpy(pkt_eth_hdr->ether_shost, sr_if->addr, ETHER_ADDR_LEN);
+          
+          sr_send_packet(sr, waiting_pkt, waiting_pkts->len, interface);
+        }
+        sr_arpreq_destroy(&(sr->cache), cached_req);
+      }
     } else {
       fprintf(stderr, "Unknown ARP operation\n");
       return;

@@ -17,7 +17,48 @@
   See the comments in the header file for an idea of what it should look like.
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
-    /* Fill this in */
+    pthread_mutex_lock(&(sr->cache->lock));
+
+    // Loop through each ARP request in the linked list
+    for (struct sr_arpreq *req = sr->cache->requests; req != NULL; req = req->next) {
+        if(req->times_sent == 5) {
+            for (struct sr_packet *waiting_pkts = req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
+                
+            }
+        }
+        else if(difftime(time(NULL), req->sent) >= 1.0) {
+            send_arp_request(sr, req);
+        }
+    }
+
+    pthread_mutex_unlock(&(sr->cache->lock));
+}
+
+void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
+    uint8_t *arp_request_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t)+sizeof(sr_arp_hdr_t));
+    struct sr_if *sr_if = sr_get_interface(sr, req->packets->iface);
+            
+    sr_ethernet_hdr_t *arp_request_eth_hdr = (sr_ethernet_hdr_t *) arp_request_packet;
+    uint8_t broadcast_mac[ETHER_ADDR_LEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    memcpy(arp_request_eth_hdr->ether_dhost, broadcast_mac, ETHER_ADDR_LEN);
+    memcpy(arp_request_eth_hdr->ether_shost, sr_if->addr, ETHER_ADDR_LEN);
+    arp_request_eth_hdr->ether_type = htons(ethertype_arp);
+            
+    sr_arp_hdr_t *arp_request_hdr = (sr_arp_hdr_t *) (arp_request_packet + sizeof(sr_ethernet_hdr_t));
+    arp_request_hdr->ar_hrd = htons(arp_hrd_ethernet);
+    arp_request_hdr->ar_pro = htons(ethertype_ip);
+    arp_request_hdr->ar_hln = ETHER_ADDR_LEN;
+    arp_request_hdr->ar_pln = 4;
+    arp_request_hdr->ar_op htons(arp_op_request);
+    memcpy(arp_request_hdr->sha, sr_if->addr, ETHER_ADDR_LEN);
+    arp_request_hdr->ar_sip = sr_if->ip;
+    memcpy(arp_request_hdr->tha, 0x00, ETHER_ADDR_LEN);
+    arp_request_hdr->ar_tip = req->ip;
+
+    sr_send_packet(sr, arp_request_packet, sizeof(sr_ethernet_hdr_t)+sizeof(sr_arp_hdr_t), req->packets->iface);
+    req->sent = time(NULL);
+    req->times_sent++;
+    free(arp_request_packet);
 }
 
 /* You should not need to touch the rest of this code. */
