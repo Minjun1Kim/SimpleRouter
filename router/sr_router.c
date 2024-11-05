@@ -98,7 +98,7 @@ void sr_handlepacket(struct sr_instance* sr,
   if (ethertype == ethertype_ip) {
     sr_handleIPpacket(sr, packet, len, interface);
   } else if (ethertype == ethertype_arp) {
-    
+    sr_handleARPpacket(sr, packet, len, interface);
   } else {
     fprintf(stderr, "Unknown ethertype\n");
     return;
