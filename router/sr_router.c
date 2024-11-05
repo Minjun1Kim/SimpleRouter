@@ -146,7 +146,6 @@ static void sr_handleARPpacket(struct sr_instance* sr, uint8_t * packet,
     struct sr_arpreq *cached_req = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
 
     if (cached_req) {
-      struct sr_packet *waiting_pkts = cached_req->packets;
       for (struct sr_packet *waiting_pkts = cached_req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
         uint8_t *waiting_pkt = waiting_pkts->buf;
         sr_ethernet_hdr_t *pkt_eth_hdr = (sr_ethernet_hdr_t *) waiting_pkt;
