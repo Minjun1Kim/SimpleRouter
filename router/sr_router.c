@@ -119,7 +119,7 @@ static void sr_handleARPpacket(struct sr_instance* sr, uint8_t * packet,
     return;
   }
 
-  // Check if it's targetting one of the router's ip addresses.
+  /* Check if it's targetting one of the router's ip addresses. */
   struct sr_if *sr_if = sr_get_interface(sr, interface);
   if (sr_if == 0 || sr_if->ip != arp_hdr->ar_tip) {
     return;
@@ -147,7 +147,7 @@ static void sr_handleARPpacket(struct sr_instance* sr, uint8_t * packet,
 
     if (cached_req) {
       struct sr_packet *waiting_pkts;
-      for (waiting_pkts = cached_req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next;) {
+      for (waiting_pkts = cached_req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
         uint8_t *waiting_pkt = waiting_pkts->buf;
         sr_ethernet_hdr_t *pkt_eth_hdr = (sr_ethernet_hdr_t *) waiting_pkt;
         memcpy(pkt_eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
