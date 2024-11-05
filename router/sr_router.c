@@ -93,31 +93,7 @@ void sr_handlepacket(struct sr_instance* sr,
   uint16_t ethertype = ntohs(eth_hdr->ether_type);
 
   if (ethertype == ethertype_ip) {
-    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-    uint8_t ip_hdr_len = ip_hdr->ip_hl * 4;
-
-    if (len < sizeof(sr_ethernet_hdr_t) + ip_hdr_len) {
-      fprintf(stderr, "Packet is too short\n");
-      return;
-    }
-
-    if (ip_hdr->ip_p == ip_protocol_icmp) {
-      sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + ip_hdr_len);
-      uint8_t icmp_hdr_len = sizeof(sr_icmp_hdr_t);
-
-      if (len < sizeof(sr_ethernet_hdr_t) + ip_hdr_len + icmp_hdr_len) {
-        fprintf(stderr, "Packet is too short\n");
-        return;
-      }
-
-      if (icmp_hdr->icmp_type == icmp_protocol_echo_req) {
-        sr_handleIPpacket(sr, packet, len, interface);
-      } 
-
-    } else if (ip_hdr->ip_p == ip_protocol_tcp || ip_hdr->ip_p == ip_protocol_udp) {
-      sr_handle_tcp_udp_packet(sr, packet, len, interface);
-    }
-
+    sr_handleIPpacket(sr, packet, len, interface);
   } else if (ethertype == ethertype_arp) {
     
   } else {

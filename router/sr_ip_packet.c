@@ -217,7 +217,6 @@ void forward_ip_packet(struct sr_instance *sr,
     } else {
         /* Queue the packet & rely on the function to send ARP request  */
         struct sr_arpreq *req = sr_arpcache_queuereq(&sr->cache, next_hop_ip, packet, len, out_iface->name);
-        
     }
 }
 
