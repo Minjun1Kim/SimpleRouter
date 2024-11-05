@@ -23,7 +23,8 @@
 #include "sr_utils.h"
 #include "sr_ip_packet.h"
 
-static void sr_handleARPpacket(sr, packet, len, interface);
+static void sr_handleARPpacket(struct sr_instance* sr, uint8_t * packet, 
+                               unsigned int len, char* interface);
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
  * Scope:  Global
@@ -108,7 +109,8 @@ void sr_handlepacket(struct sr_instance* sr,
 }/* end sr_ForwardPacket */
 
 
-static void sr_handleARPpacket(sr, packet, len, interface) 
+static void sr_handleARPpacket(struct sr_instance* sr, uint8_t * packet, 
+                               unsigned int len, char* interface)
 {
   sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
 
