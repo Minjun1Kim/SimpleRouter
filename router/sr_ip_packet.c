@@ -117,43 +117,55 @@ void handle_icmp_packet(struct sr_instance *sr,
 
 
 void send_icmp_echo_reply(struct sr_instance *sr,
-                          uint8_t *packet,
-                          unsigned int len,
+                          uint8_t *orig_packet,
+                          unsigned int orig_len,
                           char *interface)
 {
-    /* Extract Ethernet header */
-    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
-    /* Extract IP header */
-    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    /* Extract ICMP header */
-    sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+    /* Extract original Ethernet and IP headers */
+    sr_ethernet_hdr_t *eth_hdr_orig = (sr_ethernet_hdr_t *)orig_packet;
+    sr_ip_hdr_t *ip_hdr_orig = (sr_ip_hdr_t *)(orig_packet + sizeof(sr_ethernet_hdr_t));
 
-    /* Swap Ethernet addresses */
-    uint8_t temp_mac[ETHER_ADDR_LEN];
-    memcpy(temp_mac, eth_hdr->ether_dhost, ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_dhost, eth_hdr->ether_shost, ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_shost, temp_mac, ETHER_ADDR_LEN);
+    /* Determine lengths */
+    unsigned int ip_header_len = ip_hdr_orig->ip_hl * 4;
+    unsigned int icmp_len = ntohs(ip_hdr_orig->ip_len) - ip_header_len;
+    unsigned int new_packet_len = sizeof(sr_ethernet_hdr_t) + ip_header_len + icmp_len;
 
-    /* Swap IP addresses */
-    uint32_t temp_ip = ip_hdr->ip_dst;
-    ip_hdr->ip_dst = ip_hdr->ip_src;
-    ip_hdr->ip_src = temp_ip;
+    /* Allocate space for new packet */
+    uint8_t *packet = malloc(new_packet_len);
+    if (!packet) {
+        fprintf(stderr, "Failed to allocate memory for ICMP Echo Reply packet\n");
+        return;
+    }
 
-    /* Update ICMP type to Echo Reply (0) */
-    icmp_hdr->icmp_type = 0;
-    icmp_hdr->icmp_code = 0;
-    icmp_hdr->icmp_sum = 0;
-    uint16_t icmp_len = ntohs(ip_hdr->ip_len) - sizeof(sr_ip_hdr_t);
-    icmp_hdr->icmp_sum = cksum(icmp_hdr, icmp_len);
+    /* Construct Ethernet header */
+    sr_ethernet_hdr_t *eth_hdr_new = (sr_ethernet_hdr_t *)packet;
+    memcpy(eth_hdr_new->ether_dhost, eth_hdr_orig->ether_shost, ETHER_ADDR_LEN);
+    memcpy(eth_hdr_new->ether_shost, eth_hdr_orig->ether_dhost, ETHER_ADDR_LEN);
+    eth_hdr_new->ether_type = eth_hdr_orig->ether_type;
 
-    /* Recompute IP checksum */
-    ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+    /* Construct IP header */
+    sr_ip_hdr_t *ip_hdr_new = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+    memcpy(ip_hdr_new, ip_hdr_orig, ip_header_len);
+    ip_hdr_new->ip_src = ip_hdr_orig->ip_dst;
+    ip_hdr_new->ip_dst = ip_hdr_orig->ip_src;
+    ip_hdr_new->ip_ttl = 64;
+    ip_hdr_new->ip_sum = 0;
+    ip_hdr_new->ip_sum = cksum(ip_hdr_new, ip_header_len);
 
-    /* Send packet back out */
-    sr_send_packet(sr, packet, len, interface);
+    /* Construct ICMP header and payload */
+    sr_icmp_hdr_t *icmp_hdr_new = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + ip_header_len);
+    memcpy(icmp_hdr_new, orig_packet + sizeof(sr_ethernet_hdr_t) + ip_header_len, icmp_len);
+    icmp_hdr_new->icmp_type = 0; // Echo Reply
+    icmp_hdr_new->icmp_code = 0;
+    icmp_hdr_new->icmp_sum = 0;
+    icmp_hdr_new->icmp_sum = cksum(icmp_hdr_new, icmp_len);
+
+    /* Send the packet */
+    sr_send_packet(sr, packet, new_packet_len, interface);
+
+    /* Free allocated memory */
+    free(packet);
 }
-
 
 void forward_ip_packet(struct sr_instance *sr,
                        uint8_t *packet,
