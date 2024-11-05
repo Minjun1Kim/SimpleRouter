@@ -106,6 +106,9 @@ struct sr_arpcache {
     pthread_mutexattr_t attr;
 };
 
+/* Sends an ARP Request packet corresponding to the arp request req. */
+void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req);
+
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
    You must free the returned structure if it is not NULL. */
 struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, uint32_t ip);
