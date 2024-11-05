@@ -17,21 +17,26 @@
   See the comments in the header file for an idea of what it should look like.
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
-    pthread_mutex_lock(&(sr->cache->lock));
+    pthread_mutex_lock(&(sr->cache.lock));
 
     // Loop through each ARP request in the linked list
-    for (struct sr_arpreq *req = sr->cache->requests; req != NULL; req = req->next) {
+    struct sr_arpreq *req = sr->cache.requests;
+    struct sr_arpreq *next_req;
+    while (req) {
+        next_req = req->next;
         if(req->times_sent == 5) {
             for (struct sr_packet *waiting_pkts = req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
                 
             }
+            sr_arpreq_destroy(sr->cache, req)
         }
         else if(difftime(time(NULL), req->sent) >= 1.0) {
             send_arp_request(sr, req);
         }
+        req = next_req;
     }
 
-    pthread_mutex_unlock(&(sr->cache->lock));
+    pthread_mutex_unlock(&(sr->cache.lock));
 }
 
 void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
