@@ -40,7 +40,7 @@ void sr_handleIPpacket(struct sr_instance* sr,
   uint16_t checksum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
 
-  uint16_t calculated_checksum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+  uint16_t calculated_checksum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
   if (checksum != calculated_checksum) {
     fprintf(stderr, "Invalid IP checksum\n");
@@ -87,7 +87,7 @@ void handle_icmp_packet(struct sr_instance *sr,
 {
     /* Extract IP header */
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    unsigned int ip_header_len = ip_hdr->ip_hl * 4;
+    unsigned int ip_header_len = sizeof(sr_ip_hdr_t);
 
     /* Ensure packet is long enough for ICMP header */
     if (len < sizeof(sr_ethernet_hdr_t) + ip_header_len + sizeof(sr_icmp_hdr_t)) {
@@ -112,8 +112,6 @@ void handle_icmp_packet(struct sr_instance *sr,
     if (icmp_hdr->icmp_type == 8 && icmp_hdr->icmp_code == 0) {
         /* ICMP Echo Request - send Echo Reply */
         send_icmp_echo_reply(sr, packet, len, interface);
-    } else {
-        /* Ignore other ICMP messages */
     }
 }
 
@@ -128,7 +126,7 @@ void send_icmp_echo_reply(struct sr_instance *sr,
     /* Extract IP header */
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     /* Extract ICMP header */
-    sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + ip_hdr->ip_hl * 4);
+    sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 
     /* Swap Ethernet addresses */
     uint8_t temp_mac[ETHER_ADDR_LEN];
@@ -145,12 +143,12 @@ void send_icmp_echo_reply(struct sr_instance *sr,
     icmp_hdr->icmp_type = 0;
     icmp_hdr->icmp_code = 0;
     icmp_hdr->icmp_sum = 0;
-    uint16_t icmp_len = ntohs(ip_hdr->ip_len) - ip_hdr->ip_hl * 4;
+    uint16_t icmp_len = ntohs(ip_hdr->ip_len) - sizeof(sr_ip_hdr_t);
     icmp_hdr->icmp_sum = cksum(icmp_hdr, icmp_len);
 
     /* Recompute IP checksum */
     ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
     /* Send packet back out */
     sr_send_packet(sr, packet, len, interface);
@@ -176,7 +174,7 @@ void forward_ip_packet(struct sr_instance *sr,
     /* Decrement TTL and recompute IP checksum */
     ip_hdr->ip_ttl--;
     ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
     /* Perform Longest Prefix Match */
     struct sr_rt *rt_entry = lpm(sr, ip_hdr->ip_dst);
@@ -198,9 +196,6 @@ void forward_ip_packet(struct sr_instance *sr,
         /* Update Ethernet header */
         memcpy(eth_hdr->ether_shost, out_iface->addr, ETHER_ADDR_LEN);
         memcpy(eth_hdr->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
-
-        // send an ARP request for the next-hop IP (if one hasn’t been sent within the last second
-        //TODO
 
         /* Send packet */
         sr_send_packet(sr, packet, len, out_iface->name);
@@ -248,6 +243,7 @@ void send_icmp_error(struct sr_instance *sr,
     unsigned int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
     uint8_t *packet = malloc(len);
 
+    sr_ethernet_hdr_t *eth_hdr_orig = (sr_ethernet_hdr_t *)orig_packet;
     /* Ethernet header */
     sr_ethernet_hdr_t *eth_hdr_new = (sr_ethernet_hdr_t *)packet;
     /* IP header */
@@ -271,7 +267,7 @@ void send_icmp_error(struct sr_instance *sr,
 
     /* Set up IP header */
     ip_hdr_new->ip_v = 4;
-    ip_hdr_new->ip_hl = sizeof(sr_ip_hdr_t) / 4;
+    ip_hdr_new->ip_hl = ip_hdr_orig->ip_hl;
     ip_hdr_new->ip_tos = 0;
     ip_hdr_new->ip_len = htons(sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
     ip_hdr_new->ip_id = htons(0);
@@ -297,23 +293,8 @@ void send_icmp_error(struct sr_instance *sr,
     ip_hdr_new->ip_sum = cksum(ip_hdr_new, sizeof(sr_ip_hdr_t));
 
     /* Set Ethernet addresses */
-    memcpy(eth_hdr_new->ether_shost, iface->addr, ETHER_ADDR_LEN);
-    /* Need to get destination MAC address */
-
-    /* Lookup ARP cache for next-hop MAC address */
-    struct sr_arpentry *arp_entry = sr_arpcache_lookup(&sr->cache, ip_hdr_new->ip_dst);
-
-    if (arp_entry) {
-        memcpy(eth_hdr_new->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
-        eth_hdr_new->ether_type = htons(ethertype_ip);
-
-        /* Send packet */
-        sr_send_packet(sr, packet, len, iface->name);
-
-        free(arp_entry);
-    } else {
-        /* Queue the packet and send ARP request */
-        struct sr_arpreq *req = sr_arpcache_queuereq(&sr->cache, ip_hdr_new->ip_dst, packet, len, iface->name);
-    }
-    free(packet);
+    memcpy(eth_hdr_new->ether_dhost, eth_hdr_orig->ether_shost, ETHER_ADDR_LEN);
+    
+    /* Send packet */
+    sr_send_packet(sr, packet, len, iface->name);
 }
