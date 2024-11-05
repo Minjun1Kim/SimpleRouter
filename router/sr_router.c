@@ -122,7 +122,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
     // Check if it's targetting one of the router's ip addresses.
     struct sr_if *sr_if = sr_get_interface(sr, interface);
-    if (sr_if->ip != arp_hdr->ar_tip) {
+    if (sr_if == 0 || sr_if->ip != arp_hdr->ar_tip) {
       return;
     }
 
