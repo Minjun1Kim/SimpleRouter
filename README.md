@@ -47,3 +47,7 @@ Handles ARP packets in the `sr_handlepacket` function with two main cases:
        - **Target Hardware Address**: Set to the request packet's sender hardware address.
        - **Sender Hardware Address**: Set to the address of the interface that received the request.
        - **Target IP Address**: Set to the request packet's sender IP address.
+
+1. **Receiving an ARP Reply Packet**:
+   - Inserts (packet's sender's hardware address, sender's IP address) as an entry in the ARP cache.
+   - Loops over the packets waiting for this reply and sends them after modifying the ethernet header.
