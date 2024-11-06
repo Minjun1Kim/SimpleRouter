@@ -44,6 +44,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
     pthread_mutex_unlock(&(sr->cache.lock));
 }
 
+/* Sends an ARP Request packet corresponding to the arp request req. */
 void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
     uint8_t *arp_request_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t)+sizeof(sr_arp_hdr_t));
     struct sr_if *sr_if = sr_get_interface(sr, req->packets->iface);
