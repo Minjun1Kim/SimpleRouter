@@ -68,7 +68,7 @@ void sr_handleIPpacket(struct sr_instance* sr,
       /* handle ICMP packet */
       handle_icmp_packet(sr, packet, len, interface);
     } else if (ip_hdr->ip_p == ip_protocol_tcp || ip_hdr->ip_p == ip_protocol_udp) {
-      send_icmp_error(sr, packet, len, 3, 3, interface); /* Port unreachable */
+      send_icmp_error(sr, packet, 3, 3, interface); /* Port unreachable */
     } else {
       fprintf(stderr, "Unknown IP protocol\n");
       return;
@@ -113,7 +113,7 @@ void handle_icmp_packet(struct sr_instance *sr,
 
     if (icmp_hdr->icmp_type == 8 && icmp_hdr->icmp_code == 0) {
         /* ICMP Echo Request - send Echo Reply */
-        send_icmp_echo_reply(sr, packet, len, interface);
+        send_icmp_echo_reply(sr, packet, interface);
     }
 }
 
@@ -180,7 +180,7 @@ void forward_ip_packet(struct sr_instance *sr,
     /* Check TTL */
     if (ip_hdr->ip_ttl <= 1) {
         /* Send ICMP Time Exceeded */
-        send_icmp_error(sr, packet, len, 11, 0, interface); /* Type 11, Code 0 */
+        send_icmp_error(sr, packet, 11, 0, interface); /* Type 11, Code 0 */
         return;
     }
 
@@ -194,7 +194,7 @@ void forward_ip_packet(struct sr_instance *sr,
 
     if (!rt_entry) {
         /* Send ICMP Destination Net Unreachable */
-        send_icmp_error(sr, packet, len, 3, 0, interface); /* Type 3, Code 0 */
+        send_icmp_error(sr, packet, 3, 0, interface); /* Type 3, Code 0 */
         return;
     }
 

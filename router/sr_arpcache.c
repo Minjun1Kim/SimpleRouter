@@ -30,7 +30,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
             for (waiting_pkts = req->packets; waiting_pkts != NULL; waiting_pkts = waiting_pkts->next) {
                 struct sr_if *pkt_if = sr_get_interface(sr, waiting_pkts->iface);
                 if (pkt_if != 0) {
-                    send_icmp_error(sr, waiting_pkts->buf, waiting_pkts->len, 3, 1, pkt_if->name);
+                    send_icmp_error(sr, waiting_pkts->buf, 3, 1, pkt_if->name);
                 }
             }
             sr_arpreq_destroy(&(sr->cache), req);
