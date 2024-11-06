@@ -24,222 +24,107 @@
 In the `sr_ip_packet.c` file, I implemented the logic for handling IP packets in our software router. This includes processing incoming IP packets, generating appropriate responses, and forwarding packets to the next hop based on the routing table.
 
 I also defined an enumeration for IP protocols in `sr_protocol.h` to improve code readability:
+The descriptions for the functions are listed in: [`src/sr_ip_packet.c`](https://github.com/Minjun1Kim/SimpleRouter/blob/ip%2Barp/router/sr_ip_packet.h):
 
 #### Implemented Functionalities:
 
-##### IP Packet Handling (`sr_handleIPpacket`):
-- Validates incoming IP packets.
-- Determines if the packet is destined for the router or should be forwarded.
-- Handles ICMP Echo Requests and generates Echo Replies.
-- Sends ICMP error messages for unreachable ports.
-- Forwards packets using Longest Prefix Match routing.
+**A. Implemented `sr_handleIPpacket` within `sr_ip_packet.c`**:
 
-##### ICMP Packet Processing (`handle_icmp_packet` and `send_icmp_echo_reply`):
-- Processes ICMP packets received by the router.
-- Validates ICMP checksum.
-- Generates ICMP Echo Replies for Echo Requests.
+Handles incoming IP packets in our software router, with responsibilities for processing, forwarding, and generating responses:
 
-##### Packet Forwarding (`forward_ip_packet`):
-- Decrements TTL and updates the IP checksum.
-- Performs Longest Prefix Match to find the appropriate routing entry.
-- Checks the ARP cache for the next-hop MAC address.
-- Sends packets directly if the MAC address is known.
-- Queues packets and initiates ARP requests if the MAC address is unknown.
-
-##### Longest Prefix Match (`lpm`):
-- Implements the Longest Prefix Match algorithm to find the best routing entry for a given destination IP address.
-
-##### Sending ICMP Error Messages (`send_icmp_error`):
-- Constructs and sends ICMP error messages (e.g., Time Exceeded, Destination Unreachable).
-- Ensures that error messages are sent correctly according to the protocol specifications.
-
----
-<a id="functions-minjun"></a>
-#### Function Descriptions
-
-##### `void sr_handleIPpacket(struct sr_instance* sr, uint8_t *packet, unsigned int len, char* interface)`
-
-**Description:**  
-Handles incoming IP packets received by the router. It performs validation checks, determines whether the packet is destined for the router, and either processes it locally or forwards it to the next hop.
-
-**Parameters:**  
-- `sr`: Pointer to the router instance.
-- `packet`: Pointer to the incoming packet buffer.
-- `len`: Length of the incoming packet.
-- `interface`: Name of the interface on which the packet was received.
-
-**Functionality:**
-
-- **Validation:**
-  - Checks if the packet length is sufficient for an IP packet.
-  - Validates the IP version (IPv4) and header length.
-  - Verifies the IP checksum.
-
-- **Destination Check:**
-  - Determines if the destination IP address matches any of the router's interfaces.
-  - If it does, processes the packet locally.
-  - If not, forwards the packet.
-
-- **Local Processing:**
-  - If the packet is an ICMP Echo Request, calls `handle_icmp_packet`.
-  - If the packet is a TCP or UDP packet, sends an ICMP Port Unreachable error message using `send_icmp_error`.
-
-- **Forwarding:**
-  - Calls `forward_ip_packet` to forward the packet to the next hop.
+1. **IP Packet Handling (`sr_handleIPpacket`)**:
+   - **Validation**:
+     - Checks if the packet length is sufficient for an IP packet.
+     - Validates the IP version (IPv4) and header length.
+     - Verifies the IP checksum.
+   - **Destination Check**:
+     - Determines if the destination IP matches any router interfaces.
+     - If matched, processes the packet locally.
+     - If unmatched, forwards the packet.
+   - **Local Processing**:
+     - If the packet is an ICMP Echo Request, calls `handle_icmp_packet`.
+     - If it's a TCP or UDP packet, sends an ICMP Port Unreachable error using `send_icmp_error`.
+   - **Forwarding**:
+     - Calls `forward_ip_packet` to forward the packet to the next hop.
 
 ---
 
-##### `void handle_icmp_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface)`
+**B. Defined `handle_icmp_packet` and `send_icmp_echo_reply` for ICMP Packet Processing**:
 
-**Description:**  
-Processes ICMP packets that are destined for the router. It validates the ICMP checksum and generates appropriate responses for ICMP Echo Requests.
+Handles ICMP packets received by the router, including checksum validation and echo reply generation:
 
-**Parameters:**  
-- `sr`: Pointer to the router instance.
-- `packet`: Pointer to the incoming packet buffer.
-- `len`: Length of the incoming packet.
-- `interface`: Name of the interface on which the packet was received.
+1. **ICMP Packet Processing (`handle_icmp_packet`)**:
+   - **Validation**:
+     - Ensures packet length suffices for ICMP.
+     - Extracts the ICMP header and verifies checksum.
+   - **Processing**:
+     - Checks for ICMP Echo Request (Type 8, Code 0).
+     - Calls `send_icmp_echo_reply` if it's an Echo Request.
 
-**Functionality:**
-
-- **Validation:**
-  - Ensures the packet length is sufficient for an ICMP packet.
-  - Extracts the ICMP header and validates the ICMP checksum.
-
-- **Processing:**
-  - Checks if the ICMP packet is an Echo Request (Type 8, Code 0).
-  - If it is, calls `send_icmp_echo_reply` to generate an Echo Reply.
-
----
-
-##### `void send_icmp_echo_reply(struct sr_instance *sr, uint8_t *orig_packet, unsigned int orig_len, char *interface)`
-
-**Description:**  
-Generates and sends an ICMP Echo Reply in response to an Echo Request. Constructs a new packet to maintain the integrity of the original packet.
-
-**Parameters:**  
-- `sr`: Pointer to the router instance.
-- `orig_packet`: Pointer to the original Echo Request packet buffer.
-- `orig_len`: Length of the original packet.
-- `interface`: Name of the interface on which the original packet was received.
-
-**Functionality:**
-
-- **Packet Construction:**
-  - Allocates memory for the new Echo Reply packet.
-  - Constructs the Ethernet header by swapping the source and destination MAC addresses.
-  - Constructs the IP header:
-    - Swaps the source and destination IP addresses.
-    - Sets the TTL to a standard value (e.g., 64).
-    - Recomputes the IP checksum.
-  - Constructs the ICMP header and payload:
-    - Changes the ICMP type to Echo Reply (Type 0).
-    - Recomputes the ICMP checksum.
-
-- **Sending Packet:**
-  - Sends the new packet using `sr_send_packet`.
-  - Frees the allocated memory after sending.
+2. **Generating ICMP Echo Replies (`send_icmp_echo_reply`)**:
+   - **Packet Construction**:
+     - Allocates memory for a new Echo Reply packet.
+     - Constructs Ethernet header with swapped source/destination MACs.
+     - Sets IP TTL to 64 and recalculates checksum.
+     - Changes ICMP type to Echo Reply and recalculates checksum.
+   - **Sending Packet**:
+     - Sends the new packet using `sr_send_packet`.
+     - Frees memory post-send.
 
 ---
 
-##### `void forward_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface)`
+**C. Implemented `forward_ip_packet` for IP Packet Forwarding**:
 
-**Description:**  
-Forwards IP packets that are not destined for the router. It decrements the TTL, updates the checksum, performs routing, and handles ARP resolution.
+Forwards IP packets that are not destined for the router, decrements TTL, updates checksums, performs routing, and resolves ARP:
 
-**Parameters:**  
-- `sr`: Pointer to the router instance.
-- `packet`: Pointer to the packet buffer (packet will be modified).
-- `len`: Length of the packet.
-- `interface`: Name of the interface on which the packet was received.
-
-**Functionality:**
-
-- **TTL Handling:**
-  - Checks if the TTL is less than or equal to 1.
-  - If so, sends an ICMP Time Exceeded error message using `send_icmp_error`.
-
-- **Decrement and Update:**
-  - Decrements the TTL by 1.
-  - Recomputes the IP checksum.
-
-- **Routing:**
-  - Performs Longest Prefix Match using `lpm` to find the best route.
-  - If no route is found, sends an ICMP Destination Net Unreachable error message.
-
-- **ARP Resolution:**
-  - Checks the ARP cache for the next-hop MAC address.
-  - If found, updates the Ethernet header and sends the packet.
-  - If not found, queues the packet and initiates an ARP request.
+1. **Forwarding Functionality (`forward_ip_packet`)**:
+   - **TTL Handling**:
+     - Sends ICMP Time Exceeded error if TTL ≤ 1 using `send_icmp_error`.
+     - Otherwise, decrements TTL and updates checksum.
+   - **Routing**:
+     - Uses Longest Prefix Match (`lpm`) for the best route.
+     - Sends ICMP Destination Net Unreachable if no route is found.
+   - **ARP Resolution**:
+     - If MAC is known, updates Ethernet header and sends packet.
+     - If MAC is unknown, queues packet and initiates ARP request.
 
 ---
 
-##### `struct sr_rt *lpm(struct sr_instance *sr, uint32_t ip_dst)`
+**D. Implemented `lpm` Function for Longest Prefix Match**:
 
-**Description:**  
-Performs the Longest Prefix Match algorithm to find the best routing table entry for a given destination IP address.
+Finds the best routing entry for a destination IP address using Longest Prefix Match:
 
-**Parameters:**  
-- `sr`: Pointer to the router instance.
-- `ip_dst`: Destination IP address (in network byte order).
-
-**Returns:**  
-A pointer to the best matching routing table entry, or `NULL` if no match is found.
-
-**Functionality:**
-
-- **Iteration:**
-  - Iterates over the routing table entries.
-  - For each entry, computes the bitwise AND of the destination IP and the subnet mask.
-
-- **Matching:**
-  - Compares the result with the network address of the routing entry.
-  - Keeps track of the entry with the longest matching subnet mask.
-
-- **Selection:**
-  - Returns the routing table entry with the longest prefix match.
+1. **Longest Prefix Match (`lpm`)**:
+   - **Iteration and Matching**:
+     - Iterates through routing entries.
+     - Matches destination IP with network addresses based on subnet masks.
+   - **Selection**:
+     - Returns entry with longest matching prefix.
 
 ---
 
-##### `void send_icmp_error(struct sr_instance *sr, uint8_t *orig_packet, unsigned int orig_len, uint8_t type, uint8_t code, char *interface)`
+**E. Implemented `send_icmp_error` for Sending ICMP Error Messages**:
 
-**Description:**  
-Constructs and sends an ICMP error message (e.g., Destination Unreachable, Time Exceeded) in response to a packet that cannot be forwarded.
+Constructs and sends ICMP error messages (e.g., Destination Unreachable, Time Exceeded) in response to unforwardable packets:
 
-**Parameters:**  
-- `sr`: Pointer to the router instance.
-- `orig_packet`: Pointer to the original packet that caused the error.
-- `orig_len`: Length of the original packet.
-- `type`: ICMP error type.
-- `code`: ICMP error code.
-- `interface`: Name of the interface on which the original packet was received.
-
-**Functionality:**
-
-- **Packet Construction:**
-  - Allocates memory for the ICMP error packet.
-
-  - **Constructs the Ethernet header:**
-    - Sets the source MAC address to the router's MAC address on the received interface.
-    - Destination MAC address will be determined via ARP resolution.
-
-  - **Constructs the IP header:**
-    - Sets the source IP address to the router's IP on the received interface.
-    - Sets the destination IP address to the source IP of the original packet.
-    - Sets the appropriate protocol, TTL, and computes the IP checksum.
-
-  - **Constructs the ICMP header:**
-    - Sets the ICMP type and code.
-    - Includes the IP header and the first 8 bytes of the original packet's payload.
-    - Computes the ICMP checksum.
-
-- **ARP Resolution and Sending:**
-  - Checks the ARP cache for the destination IP.
-  - If the MAC address is known, sets the destination MAC address and sends the packet.
-  - If not, queues the packet and initiates an ARP request.
-
-
-
+1. **ICMP Error Message Handling (`send_icmp_error`)**:
+   - **Packet Construction**:
+     - Allocates memory for the ICMP error packet.
+     - **Ethernet Header**:
+       - Sets source MAC to the router’s MAC on the received interface.
+       - Destination MAC resolved via ARP.
+     - **IP Header**:
+       - Sets source IP to router's IP on received interface.
+       - Sets destination IP to the source IP of original packet.
+       - Calculates IP checksum.
+     - **ICMP Header**:
+       - Sets type and code.
+       - Includes IP header and first 8 bytes of original packet payload.
+       - Calculates ICMP checksum.
+   - **ARP Resolution and Sending**:
+     - Checks ARP cache for destination MAC.
+     - If MAC found, sets destination MAC and sends packet.
+     - If MAC not found, queues packet and initiates ARP request.
 
 ---
 ---
