@@ -31,7 +31,7 @@ Implemented in `sr_ip_packet.c`:
 ---
 
 ### Ahmad Hakim
-Implemented `sr_handleARPpacket` within `sr_router.c`:
+**Implemented `sr_handleARPpacket` within `sr_router.c`**:
 
 Handles ARP packets in the `sr_handlepacket` function with two main cases:
 
@@ -56,7 +56,7 @@ Handles ARP packets in the `sr_handlepacket` function with two main cases:
 If it's not one of those 2 cases, it ignores the packet.
 
 
-Implemented `send_arp_request` in `sr_arpcache.c`:
+**Implemented `send_arp_request` in `sr_arpcache.c`**:
 
 Sends an ARP request packet that corresponds to an ARP request entry in the ARP cache:
    
@@ -77,7 +77,7 @@ Sends an ARP request packet that corresponds to an ARP request entry in the ARP 
       - **Length of protocol address**: 4.
     
 
-Implemented `sr_arpcache_sweepreqs` in `sr_arpcache.c`:
+**Implemented `sr_arpcache_sweepreqs` in `sr_arpcache.c`**:
 
 This function gets called every second. For each request sent out, we keep checking whether we should resend an request or destroy the arp request.
 
