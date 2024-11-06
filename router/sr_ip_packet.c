@@ -265,7 +265,8 @@ void send_icmp_error(struct sr_instance *sr,
     sr_icmp_t3_hdr_t *icmp_hdr_new = (sr_icmp_t3_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 
     /* Set source IP to the IP of the interface where the packet came in */
-    struct sr_if *iface = sr_get_interface(sr, interface);
+    struct sr_rt *rt_entry = lpm(sr, ip_hdr_orig->ip_src);
+    struct sr_if *iface = sr_get_interface(sr, rt_entry->interface);
     if (!iface) {
         fprintf(stderr, "Interface not found when sending ICMP error\n");
         free(packet);
