@@ -88,3 +88,72 @@ This function gets called every second. For each request sent out, we keep check
       - **If request have been sent 5 times**: Loops over the packets waiting for a reply from this request and send back `Destination host unreachable` ICMP packet.
       - **Else if the request hasn't been sent for the last second**: Send an ARP request packet again using `send_arp_request`.
       - **Else**: Ignore this request for now.
+    
+---
+
+## Test Cases
+After following the steps mentioned in the handout (Running `./run_pox.sh` and `./run_mininet.sh` in two seperate terminals)
+Open a third terminal, cd into the router folder, run `make` to compile, then run `./sr` to run our solution.
+Now we can test on the mininet terminal:
+
+   - **Pinging the router's interfaces**:
+      - Run `client ping -c 3 10.0.1.1` (you can replace 10.0.1.1 with 192.168.2.1 or 172.64.3.1 to ping the other interfaces)
+      - You should get an output similar to this:
+```
+PING 10.0.1.1 (10.0.1.1) 56(84) bytes of data.
+64 bytes from 10.0.1.1: icmp_seq=1 ttl=64 time=221 ms
+64 bytes from 10.0.1.1: icmp_seq=2 ttl=64 time=52.4 ms
+64 bytes from 10.0.1.1: icmp_seq=3 ttl=64 time=50.6 ms
+
+--- 10.0.1.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2002ms
+rtt min/avg/max/mdev = 50.609/107.853/220.516/79.668 ms
+```
+
+
+   - **Pinging a server**:
+      - Run `client ping -c 3 192.168.2.2` (you can replace 192.168.2.2 with 172.64.3.10 to ping the other server)
+      - You should get an output similar to this:
+```
+PING 192.168.2.2 (192.168.2.2) 56(84) bytes of data.
+64 bytes from 192.168.2.2: icmp_seq=2 ttl=63 time=202 ms
+64 bytes from 192.168.2.2: icmp_seq=1 ttl=63 time=1236 ms
+64 bytes from 192.168.2.2: icmp_seq=3 ttl=63 time=89.4 ms
+
+--- 192.168.2.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2035ms
+rtt min/avg/max/mdev = 89.432/509.266/1236.334/516.165 ms, pipe 2
+```
+
+   - **Tracerouting to the router's interfaces**:
+      - Run `client traceroute -n 10.0.1.1` (you can replace 10.0.1.1 with 192.168.2.1 or 172.64.3.1 to traceroute to the other interfaces)
+      - You should get an output similar to this:
+```
+traceroute to 10.0.1.1 (10.0.1.1), 30 hops max, 60 byte packets
+ 1  10.0.1.1  124.220 ms  114.438 ms  125.683 ms
+```
+
+   - **Tracerouting to a server**:
+      - Run `client traceroute -n 192.168.2.2` (you can replace 192.168.2.2 with 172.64.3.10 to traceroute to the other server)
+      - You should get an output similar to this:
+```
+traceroute to 192.168.2.2 (192.168.2.2), 30 hops max, 60 byte packets
+ 1  10.0.1.1  31.851 ms * *
+ 2  192.168.2.2  122.137 ms  122.900 ms  123.990 ms
+```
+
+   - **Downloading a file using HTTP from one of the app servers**:
+      - Run `client wget http://192.168.2.2` (you can replace 192.168.2.2 with 172.64.3.10 to download from server2)
+      - You should get an output similar to this and have a file `index.html` downloaded:
+```
+--2024-11-05 17:12:24--  http://192.168.2.2/
+Connecting to 192.168.2.2:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 161 [text/html]
+Saving to: ‘index.html.3’
+
+index.html.3        100%[===================>]     161  --.-KB/s    in 0s      
+
+2024-11-05 17:12:26 (17.2 MB/s) - ‘index.html.3’ saved [161/161]
+```
+
