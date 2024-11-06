@@ -26,6 +26,7 @@ In the `sr_ip_packet.c` file, I implemented the logic for handling IP packets in
 I also defined an enumeration for IP protocols in `sr_protocol.h` to improve code readability:
 The descriptions for the functions are listed in: [`src/sr_ip_packet.c`](https://github.com/Minjun1Kim/SimpleRouter/blob/ip%2Barp/router/sr_ip_packet.h):
 
+<a id="functions-minjun"></a>
 #### Implemented Functionalities:
 
 **A. Implemented `sr_handleIPpacket` within `sr_ip_packet.c`**:
