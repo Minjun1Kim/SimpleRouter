@@ -120,7 +120,6 @@ void handle_icmp_packet(struct sr_instance *sr,
 
 void send_icmp_echo_reply(struct sr_instance *sr,
                           uint8_t *orig_packet,
-                          unsigned int orig_len,
                           char *interface)
 {
     /* Extract original Ethernet and IP headers */
@@ -244,7 +243,6 @@ struct sr_rt *lpm(struct sr_instance *sr, uint32_t ip_dst)
 
 void send_icmp_error(struct sr_instance *sr,
                      uint8_t *orig_packet,
-                     unsigned int orig_len,
                      uint8_t type,
                      uint8_t code,
                      char *interface)

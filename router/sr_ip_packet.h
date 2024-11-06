@@ -26,10 +26,9 @@ void handle_icmp_packet(struct sr_instance *sr, uint8_t *packet, unsigned int le
  *
  * @param sr Pointer to the router instance.
  * @param orig_packet Pointer to the original Echo Request packet buffer.
- * @param len Length of the original packet.
  * @param interface Name of the interface on which the original packet was received.
  */
-void send_icmp_echo_reply(struct sr_instance *sr, uint8_t *orig_packet, unsigned int len, char *interface);
+void send_icmp_echo_reply(struct sr_instance *sr, uint8_t *orig_packet, char *interface);
 
 /**
  * Forwards IP packets to the next hop based on the routing table.
@@ -55,11 +54,10 @@ struct sr_rt *lpm(struct sr_instance *sr, uint32_t ip_dst);
  *
  * @param sr Pointer to the router instance.
  * @param orig_packet Pointer to the original packet that caused the error.
- * @param orig_len Length of the original packet.
  * @param type ICMP error type.
  * @param code ICMP error code.
  * @param interface Name of the interface on which the original packet was received.
  */
-void send_icmp_error(struct sr_instance *sr, uint8_t *orig_packet, unsigned int orig_len, uint8_t type, uint8_t code, char *interface);
+void send_icmp_error(struct sr_instance *sr, uint8_t *orig_packet, uint8_t type, uint8_t code, char *interface);
 
 #endif
