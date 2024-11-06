@@ -1,53 +1,49 @@
 # SimpleRouter
 
-Names:
-Minjun Kim
-Ahmad Hakim
+### Authors
+- **Minjun Kim**
+- **Ahmad Hakim**
 
-Contributions:
+---
 
-Minjun
+## Contributions
 
-- Implemented in `sr_ip_packet.c`
+### Minjun Kim
+Implemented in `sr_ip_packet.c`:
 
-1. Receive Raw Ethernet Frames
-2. Check whether the received packet is an IP packet or ARP packet.
+1. **Receive Raw Ethernet Frames**
+   - **Packet Type Check**: Determines if the received packet is an IP packet or an ARP packet.
 
-Case 1: IP packet
+#### Case 1: IP Packet
+   - **If the packet is intended for the router**:
+     - **ICMP Echo Request**: Sends an echo reply using `send_icmp_echo_reply`.
+     - **TCP/UDP Packet**: Sends an ICMP error message indicating "port unreachable."
 
-a. if the packet is for me (i.e. the router), check whether it is an ICMP echo request or a TCP/UDP. `sr_handleIPpacket` <br/>
-b. if ICMP echo request, we send an echo reply. `send_icmp_echo_reply` <br/>
-c. if TCP/UDP, send a ICMP error message saying port is unreachable. <br/>
+   - **If the packet is not intended for the router**:
+     - **Routing Table Lookup**: Uses Longest Prefix Matching to determine the correct interface for forwarding the packet.
+     - **No Match**: Sends an ICMP "Destination net unreachable" error (Type 3, Code 0).
+     - **Match Found**:
+       - **ARP Cache Check**: Looks up the MAC address for the destination.
+       - **If MAC Address Found**: Forwards the frame to the next hop.
+       - **If MAC Address Not Found**: Enqueues the packet and sends an ARP request to resolve the MAC address.
+       - **No Response After 5 ARP Requests**: Sends an ICMP "Destination host unreachable" error (Type 3, Code 1).
 
-d. if the packet is not for me, then check the routing table using Longest Prefix Matching to see which interface is used to forward the packet to its destination. <br/>
-e. If there's no match, then send a ICMP error message indicating "Destination net unrachable" with type 3 and code 0. <br/>
-f. if there's a match, then we check the ARP cache for the MAC address of the destination. <br/>
-g. If the MAC address can be found, forward the frame to the next hop. <br/>
-h. If not, enqueue the packet and send an ARP request to the nework to obtain back a MAC address. <br/>
-i. If no success after 5 ARP requests, send an ICMP error message indicating "Destination host unreachable" with type 3, code 1 <br/>
+---
 
-Ahmad
+### Ahmad Hakim
+Implemented in `sr_handleARPpacket` within `sr_router.c`:
 
-- Implemented `sr_handleARPpacket` in `sr_router.c`:
-This method handles ARP packets in the `sr_handlepacket` function
+Handles ARP packets in the `sr_handlepacket` function with two main cases:
 
-Implementation details: After checking that the packet's length is valid and that it's targetting one of the router's interfaces, this function handles 2 cases:
-1. Recieving ARP request packet:
-It creates a new ARP reply packet that's identical to the request packet as most of the headers information are the same and modifies the following:
+1. **Receiving an ARP Request Packet**:
+   - **Creates an ARP Reply Packet**: Initializes a reply packet with most headers mirroring the request packet and modifies the following fields:
 
-Ethernet Header:
-a. Sets the destination ethernet address to the request packet's source ethernet address (the destination is the address of the one who sent the request)
-b. Sets the source ethernet address to the address of the interface that recieved the request packet.
-
-ARP Header:
-a. Sets the ARP opcode to 2 (ARP reply opcode)
-b. Sets the target hardware address to the request packet's sender hardware address (Because we're targetting the one who sent the request)
-c. Sets the sender hardware address to the address of the interface that recieved the request packet.
-d. Sets the target IP address to the request packet's sender IP address (Because we're targetting the one who sent the request)
-e. Sets the sender IP address to the IP address of the interface that recieved the request packet.
-
-And finally it sends the reply packet.
-
-2. Recieving ARP reply packet:
-a. Inserts (packet's sender's hardware address, sender's IP address) as an entry in the ARP cache
-b. Loops over the packets waiting for this reply and sends them after modifying the ethernet header.
+     - **Ethernet Header**:
+       - **Destination Address**: Set to the request packet's source address.
+       - **Source Address**: Set to the address of the interface that received the request.
+     
+     - **ARP Header**:
+       - **Opcode**: Set to 2 (ARP Reply).
+       - **Target Hardware Address**: Set to the request packet's sender hardware address.
+       - **Sender Hardware Address**: Set to the address of the interface that received the request.
+       - **Target IP Address**: Set to the request packet's sender IP address.
