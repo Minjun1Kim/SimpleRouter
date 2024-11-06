@@ -258,3 +258,44 @@ index.html.3        100%[===================>]     161  --.-KB/s    in 0s
 2024-11-05 17:12:26 (17.2 MB/s) - ‘index.html.3’ saved [161/161]
 ```
 
+   - **Non-existent route to the destination IP (Destination net unreachable)**:
+      - Run `client ping -c 3 192.168.2.12` (you can replace 192.168.2.12 with any ip not in the `IP_CONFIG` file)
+      - You should get an output similar to this:
+```
+PING 192.168.2.12 (192.168.2.12) 56(84) bytes of data.
+From 10.0.1.1 icmp_seq=1 Destination Net Unreachable
+From 10.0.1.1 icmp_seq=2 Destination Net Unreachable
+From 10.0.1.1 icmp_seq=3 Destination Net Unreachable
+
+--- 192.168.2.12 ping statistics ---
+3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2004ms
+```
+
+   - **Sending a packet containing UDP or TCP payload to the router's interfaces (Port Unreachable)**:
+      - Run `client hping3 -c 3 10.0.1.1` (you can replace 10.0.1.1 with 192.168.2.1 or 172.64.3.1, also make sure hping3 is installed)
+      - You should get an output similar to this:
+```
+HPING 10.0.1.1 (client-eth0 10.0.1.1): NO FLAGS are set, 40 headers + 0 data bytes
+ICMP Port Unreachable from ip=10.0.1.1 name=UNKNOWN   
+ICMP Port Unreachable from ip=10.0.1.1 name=UNKNOWN   
+ICMP Port Unreachable from ip=10.0.1.1 name=UNKNOWN   
+
+--- 10.0.1.1 hping statistic ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 0.0/0.0/0.0 ms
+```
+
+   - **Sending 5 ARP requests with no response ( Destination host unreachable)**:
+      - Run `sw0 ifconfig sw0-eth1 down`
+      - Run `client ping -c 3 192.168.2.2`
+      - You should get an output similar to this:
+```
+PING 192.168.2.2 (192.168.2.2) 56(84) bytes of data.
+From 10.0.1.1 icmp_seq=3 Destination Host Unreachable
+From 10.0.1.1 icmp_seq=2 Destination Host Unreachable
+From 10.0.1.1 icmp_seq=1 Destination Host Unreachable
+
+--- 192.168.2.2 ping statistics ---
+3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2062ms
+pipe 3
+```
