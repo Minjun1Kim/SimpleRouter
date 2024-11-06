@@ -31,7 +31,7 @@ Implemented in `sr_ip_packet.c`:
 ---
 
 ### Ahmad Hakim
-Implemented in `sr_handleARPpacket` within `sr_router.c`:
+Implemented `sr_handleARPpacket` within `sr_router.c`:
 
 Handles ARP packets in the `sr_handlepacket` function with two main cases:
 
@@ -44,10 +44,44 @@ Handles ARP packets in the `sr_handlepacket` function with two main cases:
      
      - **ARP Header**:
        - **Opcode**: Set to 2 (ARP Reply).
+       - **Target IP Address**: Set to the request packet's sender IP address.
+       - **Sender IP Address**: Set to the IP address of the interface that received the request.
        - **Target Hardware Address**: Set to the request packet's sender hardware address.
        - **Sender Hardware Address**: Set to the address of the interface that received the request.
-       - **Target IP Address**: Set to the request packet's sender IP address.
 
-1. **Receiving an ARP Reply Packet**:
+2. **Receiving an ARP Reply Packet**:
    - Inserts (packet's sender's hardware address, sender's IP address) as an entry in the ARP cache.
    - Loops over the packets waiting for this reply and sends them after modifying the ethernet header.
+
+If it's not one of those 2 cases, it ignores the packet.
+
+
+Implemented `send_arp_request` in `sr_arpcache.c`:
+
+Sends an ARP request packet that corresponds to an ARP request entry in the ARP cache:
+   
+   - **Ethernet Header**:
+    - **Destination Address**: Set to 0 to broadcast the request.
+    - **Source Address**: Set to the address of the interface that received the request.
+    - **Packet Type ID**: Set to ARP opcode.
+     
+   - **ARP Header**:
+      - **Opcode**: Set to 1 (ARP Request).
+      - **Target IP Address**: Set to the IP address attached to the ARP request entry.
+      - **Sender IP Address**: Set to the IP address of the interface that received the request.
+      - **Target Hardware Address**: 0.
+      - **Sender Hardware Address**: Set to the address of the interface that received the request.
+      - **Format of hardware address**: 1 (ARP header format opcode).
+      - **Format of protocol address**: Set to IP opcode.
+      - **Length of hardware address**: 6.
+      - **Length of protocol address**: 4.
+    
+
+Implemented `sr_arpcache_sweepreqs` in `sr_arpcache.c`:
+
+This function gets called every second. For each request sent out, we keep checking whether we should resend an request or destroy the arp request.
+
+   - Loops over ARP requests in cache and check for 3 cases:
+      - **If request have been sent 5 times**: Loops over the packets waiting for a reply from this request and send back `Destination host unreachable` ICMP packet.
+      - **Else if the request hasn't been sent for the last second**: Send an ARP request packet again using `send_arp_request`.
+      - **Else**: Ignore this request for now.
